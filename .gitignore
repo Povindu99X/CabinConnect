@@ -97,6 +97,13 @@ Thumbs.db
 .prettiercache
 
 # ===========================
+# Supabase
+# ===========================
+
+supabase/.branches
+supabase/.temp
+
+# ===========================
 # General
 # ===========================
 
@@ -115,3 +122,6 @@ desktop.ini
 *.p12
 *.key
 secrets.json
+
+
+.agents/

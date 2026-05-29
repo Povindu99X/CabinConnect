@@ -10,9 +10,10 @@ Run through this before starting your first Bolt or after cloning the repo on a 
 - [ ] Restore packages: `dotnet restore src/backend/CabinConnect.sln`
 - [ ] `appsettings.Development.json` exists at `src/backend/CabinConnect.Api/` and is **not** committed (check `.gitignore`)
 - [ ] `appsettings.Development.json` contains:
-  - `ConnectionStrings.Default` — Supabase Postgres connection string (get from project owner or `npx supabase status` if running locally)
+  - `ConnectionStrings.DefaultConnection` — Supabase Postgres connection string (get from project owner or `npx supabase status` if running locally)
   - `Supabase.Url` — e.g. `https://<project>.supabase.co`
-  - `Supabase.AnonKey` and `Supabase.ServiceRoleKey`
+  - `Supabase.PublishableKey` (`sb_publishable_*`) and `Supabase.SecretKey` (`sb_secret_*`, backend only)
+  - Legacy `AnonKey` / `ServiceRoleKey` still work during migration — see [supabase-api-keys.md](supabase-api-keys.md)
 - [ ] API starts cleanly: `dotnet run --project src/backend/CabinConnect.Api` → watch for DB connectivity log on startup
 - [ ] API is reachable at `http://localhost:5283/health` (or the port in `launchSettings.json` — confirm before setting frontend env vars)
 
@@ -26,7 +27,7 @@ Run through this before starting your first Bolt or after cloning the repo on a 
   ```
   VITE_API_BASE_URL=http://localhost:5283      ← match the API port in launchSettings.json
   VITE_SUPABASE_URL=https://<project>.supabase.co
-  VITE_SUPABASE_ANON_KEY=<anon key>
+  VITE_SUPABASE_PUBLISHABLE_KEY=<sb_publishable_...>
   ```
   > **Common mistake:** defaulting `VITE_API_BASE_URL` to `https://localhost:5001` (the default ASP.NET dev-cert port). Always check `launchSettings.json` for the actual port.
 - [ ] Install packages: `cd src/frontend && npm install` — verify packages appear in `node_modules/` and are listed in `package.json`

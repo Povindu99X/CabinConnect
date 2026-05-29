@@ -28,6 +28,50 @@ Full requirements: [docs/solution/Requirements.md](docs/solution/Requirements.md
 
 ---
 
+## Repository Layout
+
+This is a **monorepo** (see [ADR-004](ai-dlc/rules/architecture.md)): frontend and backend live together for coordinated changes.
+
+```
+src/
+  backend/          # .NET 8 Web API (CabinConnect.sln)
+  frontend/         # React 18 + Vite + TypeScript
+supabase/           # Migrations, local Supabase config, RLS policies
+docs/solution/      # Product requirements
+ai-dlc/             # AI-DLC process artifacts
+```
+
+### Quick start
+
+**Backend**
+
+```bash
+cp src/backend/CabinConnect.Api/appsettings.Development.json.example \
+   src/backend/CabinConnect.Api/appsettings.Development.json
+dotnet restore src/backend/CabinConnect.sln
+dotnet run --project src/backend/CabinConnect.Api
+# → http://localhost:5283/health
+```
+
+**Frontend**
+
+```bash
+cp src/frontend/.env.example src/frontend/.env.local
+cd src/frontend && npm install && npm run dev
+# → http://localhost:5173
+```
+
+**Supabase (optional local)**
+
+```bash
+npx supabase start
+npx supabase status   # copy keys into appsettings.Development.json and .env.local
+```
+
+Full checklist: [ai-dlc/guidelines/dev-setup.md](ai-dlc/guidelines/dev-setup.md)
+
+---
+
 ## How We Build
 
 This project follows the AI-DLC process. Work is structured as Intents → Units → Bolts across three phases: Inception, Build, and Operate.

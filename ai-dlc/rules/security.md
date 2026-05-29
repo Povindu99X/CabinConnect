@@ -23,8 +23,10 @@
 ## Supabase-Specific
 - Enable RLS on every table before going to production
 - Use Supabase Auth for all user identity — do not roll your own auth
-- Service role key must never be used client-side
-- Anon key is safe for the client only when RLS policies are correct
+- **Secret key** (`sb_secret_*`) or legacy **service_role** must never be used client-side — browsers receive HTTP 401
+- **Publishable key** (`sb_publishable_*`) or legacy **anon** is safe in the client only when RLS policies are correct
+- Do not put publishable/secret keys in the `Authorization` header — only the user's Auth JWT belongs there
+- Prefer new publishable/secret keys; migrate off legacy JWT platform keys before Supabase retires them (see [guidelines/supabase-api-keys.md](../guidelines/supabase-api-keys.md))
 
 ## Dependency Management
 - Run `npm audit` and `dotnet list package --vulnerable` in CI

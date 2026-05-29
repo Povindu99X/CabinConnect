@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=db.oaodtcggurptbtamcddo.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=[YOUR-PASSWORD];SSL Mode=Require;Trust Server Certificate=true"
+  },
+  "Supabase": {
+    "Url": "https://oaodtcggurptbtamcddo.supabase.co",
+    "PublishableKey": "sb_publishable_...",
+    "SecretKey": "sb_secret_..."
+  },
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:5173" ]
+  }
+}

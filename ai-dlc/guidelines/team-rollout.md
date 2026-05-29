@@ -81,7 +81,7 @@ Before raising a PR, the engineer must verify:
 - [ ] Prompt log entry exists in `ai-dlc/prompts/YYYY-MM-DD-<feature>.md` (link it in the PR description)
 - [ ] Review checklist run (`ai-dlc/skills/review-checklist.md`) — Claude can do this: "Run the review checklist for this unit"
 - [ ] No secrets or hardcoded environment values in the diff
-- [ ] Edge cases EC-001–EC-010 checked; any that apply are handled or noted as out of scope
+- [ ] Relevant EC-* cases from edge-cases.md checked; any that apply are handled or noted as out of scope
 - [ ] Unit status updated to `Done` in `ai-dlc/ops/build/backlog.md`
 
 ### Merge conflict resolution
@@ -116,7 +116,7 @@ Merge conflicts in AI-generated code are common when two units touch the same fi
 
 - Confirm every engineer has read `Instructions2FDE.md` and can invoke a ceremony without help
 - Run the mob elaboration yourself (or co-facilitate with Claude) — do not delegate elaboration to individual engineers without oversight; the quality of units determines the quality of everything downstream
-- Assign units based on domain knowledge, not just availability — an engineer who doesn't understand the booking domain will produce worse ACs and worse code
+- Assign units based on domain knowledge, not just availability — an engineer who doesn't understand the community/resort domain will produce worse ACs and worse code
 - Set the Bolt's exit criteria explicitly: what does "Bolt complete" mean? (All units Done + end-to-end test + retro written is the default)
 
 ### During the Bolt

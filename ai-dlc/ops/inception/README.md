@@ -30,7 +30,7 @@ An intent is complete when:
 
 ## Tips for Good Inception Sessions
 
-- An intent should be outcome-oriented, not solution-oriented ("guests can find available cabins" not "build a search endpoint")
+- An intent should be outcome-oriented, not solution-oriented ("residents can discover community events" not "build a search endpoint")
 - Mob elaboration works best with 2-4 people and an AI facilitator using the prompts in [`skills/mob-elab-prompts.md`](../../skills/mob-elab-prompts.md)
 - If a session produces more than 8 units, the intent is probably too broad — split it
 - Edge cases should be recorded in [`guidelines/edge-cases.md`](../../guidelines/edge-cases.md) when discovered, not just in the elaboration notes

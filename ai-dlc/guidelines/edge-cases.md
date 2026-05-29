@@ -3,58 +3,118 @@
 Known scenarios where the system can behave incorrectly if not explicitly handled.
 Reference this file when writing acceptance criteria and reviewing AI-generated output.
 
----
-
-## Booking & Availability
-
-**EC-001 — Concurrent booking race condition**
-Two guests book the same cabin for the same dates simultaneously. Without a database-level lock or optimistic concurrency check, both bookings can succeed.
-_Mitigation:_ Use a database transaction with a unique constraint or advisory lock when creating a booking. The Hold mechanism provides a soft buffer.
-
-**EC-002 — Hold expiry during checkout**
-A guest's Hold expires while they are completing payment. If the Hold is released and another guest books the same dates, the first guest's payment may succeed but the booking cannot be fulfilled.
-_Mitigation:_ Validate that the Hold is still active at the point of payment confirmation. Return a clear error if it has expired.
-
-**EC-003 — Timezone-naive date comparisons**
-Storing or comparing dates without timezone context causes off-by-one errors around midnight. A guest in UTC+10 checking out "tomorrow" may collide with a guest checking in "today" in UTC.
-_Mitigation:_ All dates stored as UTC. Check-in/check-out are date-only (no time component). UI displays in local timezone but submits UTC dates.
-
-**EC-004 — Blackout dates not checked at booking creation**
-A blackout date added after a booking is created does not invalidate the booking. However, blackout dates added before booking creation must block availability.
-_Mitigation:_ Availability query always filters out blackout dates. Existing confirmed bookings are not automatically cancelled when a blackout is added — requires manual Host action.
+**Product source:** [docs/solution/Requirements.md](../../docs/solution/Requirements.md)
 
 ---
 
-## Pricing
+## Community & Tenancy
 
-**EC-005 — Overlapping seasonal rates**
-If two seasonal rates overlap the same date range, the system must have a deterministic rule for which applies.
-_Mitigation:_ Most specific date range wins. If equally specific, the higher rate wins. Document this rule in the UI for Hosts.
+**EC-COM-01 — Wrong community context**
+A user supplies another community's ID (or tampered context) to list or mutate data.
+_Mitigation:_ API resolves community from membership; reject or 404 when not a member. RLS filters all rows by `community_id`.
 
-**EC-006 — Rate changes after booking confirmation**
-A Host changes the Base Rate after a Guest has a Confirmed booking. The booking price must not change retroactively.
-_Mitigation:_ Total price is stored on the Booking record at the time of confirmation and is never recalculated from current rates.
+**EC-COM-02 — Membership revoked mid-session**
+A user is removed from a community while their JWT session is still valid.
+_Mitigation:_ Authorize every request against current membership; return 403 on mutation. Optional: force refresh on membership change.
+
+**EC-COM-03 — User in multiple communities**
+A user belongs to more than one resort and submits a request without an active community.
+_Mitigation:_ Require explicit active community (header or profile); default to primary only if product decision allows — document in intent.
 
 ---
 
 ## Auth & Access
 
-**EC-007 — Guest accessing another Guest's booking**
-Without RLS, a Guest could fetch or modify another Guest's booking by guessing the booking ID.
-_Mitigation:_ RLS policy on the bookings table restricts reads and writes to the authenticated user's own bookings. Server-side also validates ownership before any mutation.
+**EC-AUTH-01 — Expired JWT on long sessions**
+A user with an open browser tab submits requests with an expired token.
+_Mitigation:_ Frontend uses Supabase Auth's `onAuthStateChange` to refresh proactively. API returns 401 on expired tokens; frontend redirects to login.
 
-**EC-008 — Expired JWT on long sessions**
-A guest with an open browser tab may submit requests with an expired token.
-_Mitigation:_ Frontend uses Supabase Auth's `onAuthStateChange` to refresh tokens proactively. API returns 401 on expired tokens; frontend redirects to login.
+**EC-AUTH-02 — Cross-user resource access**
+A user guesses another user's resource ID (cabin, order, tool listing) within the same community.
+_Mitigation:_ RLS restricts rows to owner or permitted role. Server validates ownership or role before any mutation.
+
+**EC-AUTH-03 — Unauthenticated mutation**
+Anonymous or expired callers attempt POST/PUT/PATCH/DELETE.
+_Mitigation:_ All mutating endpoints require valid JWT unless explicitly marked public. Return 401.
+
+**EC-AUTH-04 — Public read over-exposure**
+Partially public browse (NF-05) exposes draft or private data.
+_Mitigation:_ Allowlist public endpoints (published events, visitor instruction tokens only). Never expose operational info or drafts.
 
 ---
 
-## Data & Validation
+## MyCabin
 
-**EC-009 — Check-out before check-in**
-A malformed request where check-out date is before or equal to check-in date.
-_Mitigation:_ Validated server-side before any database query. Frontend also validates but server validation is the authoritative gate.
+**EC-MC-01 — Expired or revoked visitor instruction link**
+A Visitor opens a share link after expiry or owner revocation.
+_Mitigation:_ Return 404 or 410 with a clear message; do not leak whether the cabin exists.
 
-**EC-010 — Zero-night booking**
-Check-in and check-out on the same date results in a zero-night stay.
-_Mitigation:_ Minimum booking duration is 1 night. Enforce in validation with a clear error message.
+**EC-MC-02 — Operational info exposed to wrong role**
+Access codes or emergency contacts visible to Residents or anonymous users.
+_Mitigation:_ Operational information endpoints are Cabin Owner only; separate from visitor instruction content.
+
+**EC-MC-03 — Maintenance status regression**
+A completed maintenance task is moved back to an invalid earlier state without audit.
+_Mitigation:_ Append status history; restrict invalid transitions in domain logic.
+
+---
+
+## Events
+
+**EC-EV-01 — Registration for full or past event**
+A Resident registers after capacity is reached or after the event end date.
+_Mitigation:_ Validate capacity and date server-side; return 409 or 400 with clear message.
+
+**EC-EV-02 — Draft event visible to residents**
+Unpublished draft appears in resident browse lists.
+_Mitigation:_ Browse queries filter `published` only; admins see drafts via admin routes.
+
+---
+
+## Groceries
+
+**EC-GR-01 — Supplier (RIMA) unavailable**
+Catalog browse or order submit fails due to timeout or 5xx from supplier.
+_Mitigation:_ Return 503 with safe message; do not partial-commit order without confirmation; log for ops.
+
+**EC-GR-02 — Pickup time in the past**
+Owner schedules pickup at a datetime already passed.
+_Mitigation:_ Validate pickup schedule ≥ now (community-local or UTC per elaboration); return 400.
+
+**EC-GR-03 — Concurrent volunteer acceptance (delivery phase)**
+Two volunteers accept the same delivery request.
+_Mitigation:_ Database unique constraint or optimistic lock on assignment; second accept gets 409.
+
+**EC-GR-04 — Stale order status notification**
+Owner receives duplicate or out-of-order status notifications.
+_Mitigation:_ Idempotent notification triggers keyed by order ID + status version.
+
+---
+
+## ToolShare
+
+**EC-TS-01 — Overlapping borrow requests**
+Two Cabin Owners request the same tool for overlapping periods while status is Available.
+_Mitigation:_ Transaction + unique constraint on overlapping approved loans, or first-approve-wins with decline of others.
+
+**EC-TS-02 — Approve then decline race**
+Owner declines while system still shows Reserved from a pending approve.
+_Mitigation:_ Single-writer status transitions with row versioning; return 409 on conflict.
+
+**EC-TS-03 — Loan period invalid**
+End date before or equal to start date for borrow/rent period.
+_Mitigation:_ Server validates before DB query; mirror validation in UI.
+
+---
+
+## Dates & Time
+
+**EC-DATE-01 — Timezone-naive date comparisons**
+Event dates or loan periods compared with implicit local midnight cause off-by-one errors.
+_Mitigation:_ Store date-only fields as UTC dates; UI converts for display; server is authoritative.
+
+---
+
+## Retired edge cases
+
+The following IDs applied to a **booking/rental** product draft and are retired: EC-001 through EC-010 (concurrent booking, Hold expiry, blackout dates, seasonal rates, zero-night booking, etc.). Do not reference them in new units.

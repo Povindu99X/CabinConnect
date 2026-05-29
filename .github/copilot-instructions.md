@@ -6,16 +6,17 @@ This file governs how GitHub Copilot operates in this project. All rules apply t
 
 ## 1. Project Identity
 
-**CabinConnect** is a cabin booking platform.
+**CabinConnect** is a multi-module resort community platform for Norwegian cabin life (MyCabin, Events, Groceries, ToolShare). See [docs/solution/Requirements.md](../docs/solution/Requirements.md).
 - Backend: C# / .NET 8 Web API (repository pattern, async/await throughout)
 - Frontend: React 18 + TypeScript (strict mode, functional components only)
-- Database: PostgreSQL via Supabase (RLS enforced on all tables)
+- Database: PostgreSQL via Supabase (RLS enforced on all tables; community-scoped tenancy)
 - Auth: Supabase Auth — do not implement custom auth
 
 **System boundaries:**
 - React app calls the .NET API only — never Supabase directly for data mutations
 - Supabase client on the frontend is for auth tokens and real-time subscriptions only
 - All business rules live in the .NET domain layer
+- All tenant data is scoped to a **Community** (resort); users only see their community's data (NF-03)
 
 ---
 
@@ -58,10 +59,10 @@ Full gate definition: [ai-dlc/rules/prompt-quality-gate.md](../ai-dlc/rules/prom
 
 ### Always do these
 - Validate and sanitize all input at the API boundary
-- Authenticate every endpoint — explicitly mark public routes
-- Use RLS on every Supabase table; update policies when adding tables
-- Store total booking price on the Booking record at confirmation — never recalculate from current rates
-- Store and compare all dates as UTC; check-in/check-out are date-only (no time component)
+- Authenticate every endpoint — explicitly mark public routes (e.g. visitor instructions, published event browse)
+- Use RLS on every Supabase table; update policies when adding tables; include `community_id` on tenant data
+- Scope every query and mutation to the caller's Community unless explicitly cross-community (out of MVP scope)
+- Store and compare date-only fields as UTC; UI displays in local timezone
 - Use DTOs at API boundaries; keep domain models internal to the .NET layer
 
 ### Naming conventions
@@ -80,18 +81,16 @@ Architecture decisions: [ai-dlc/rules/architecture.md](../ai-dlc/rules/architect
 
 | Term | Meaning |
 |---|---|
-| **Cabin** | A rentable accommodation unit |
-| **Booking** | A reservation of a Cabin by a Guest for a date range |
-| **Booking Status** | `Pending` / `Confirmed` / `Cancelled` / `Completed` / `NoShow` |
-| **Guest** | A user who makes bookings (authenticated via Supabase Auth) |
-| **Host** | The operator managing cabins and listings |
-| **Availability** | A Cabin is available if no Confirmed or Pending booking overlaps the requested dates |
-| **Date Range** | Inclusive check-in, exclusive check-out (e.g. Jun 1–5 = 4 nights) |
-| **Hold** | Temporary uncommitted reservation during checkout; expires after 15 minutes |
-| **Blackout Date** | Date range blocking a Cabin regardless of bookings |
-| **Base Rate** | Nightly price set by the Host |
-| **Seasonal Rate** | Override to Base Rate for a specific date range |
-| **Total Price** | Sum of nightly rates at booking confirmation; never retroactively recalculated |
+| **Community** | Resort/neighborhood tenancy boundary; all resident data is scoped here |
+| **Cabin Owner** | Authenticated user managing a Cabin (MyCabin, Groceries, ToolShare) |
+| **Resident** | Community member (e.g. Events browse and registration) |
+| **Administrator** | Community admin (e.g. publish Events, manage attendees) |
+| **Volunteer** | Delivery carrier for Groceries (phased) |
+| **Visitor** | Limited access to Visitor Instructions without full account (MC-06) |
+| **Cabin** | Owner-managed accommodation unit — not a short-term rental listing in MVP |
+| **Event** | Community activity with draft/published lifecycle |
+| **Grocery Order** | Owner order via supplier (RIMA); pickup MVP, delivery phased |
+| **Tool Listing** | Equipment offered for lend/rent within a Community |
 
 Full glossary: [ai-dlc/guidelines/domain-glossary.md](../ai-dlc/guidelines/domain-glossary.md)
 
@@ -99,20 +98,21 @@ Full glossary: [ai-dlc/guidelines/domain-glossary.md](../ai-dlc/guidelines/domai
 
 ## 5. Known Edge Cases — Check Before Generating Code
 
-Always check whether the code being generated handles these:
+Always check relevant cases from [ai-dlc/guidelines/edge-cases.md](../ai-dlc/guidelines/edge-cases.md):
 
 | ID | Scenario | Required behaviour |
 |---|---|---|
-| EC-001 | Concurrent booking on same cabin/dates | Database-level lock or unique constraint; Hold provides soft buffer |
-| EC-002 | Hold expires during payment | Validate Hold is still active at payment confirmation; return clear error if not |
-| EC-003 | Timezone-naive date comparison | Dates stored as UTC; date-only (no time); UI converts to local for display only |
-| EC-004 | Blackout dates not checked at booking | Availability query must always filter blackout dates |
-| EC-005 | Overlapping seasonal rates | Most specific date range wins; tie goes to higher rate |
-| EC-006 | Rate change after confirmation | Total price frozen at confirmation; never recalculated |
-| EC-007 | Guest accessing another Guest's booking | RLS restricts reads/writes to owner; server also validates ownership |
-| EC-008 | Expired JWT on long session | API returns 401; frontend uses `onAuthStateChange` to refresh proactively |
-| EC-009 | Check-out before check-in | Server validates before any DB query; frontend validates too but server is authoritative |
-| EC-010 | Zero-night booking (same-day in/out) | Minimum 1 night enforced in validation |
+| EC-COM-01 | Wrong community context | Reject/404; RLS + API enforce `community_id` |
+| EC-COM-02 | Membership revoked mid-session | Authorize against current membership on every request |
+| EC-AUTH-01 | Expired JWT | API 401; frontend refreshes via `onAuthStateChange` |
+| EC-AUTH-02 | Cross-user resource access | RLS + server ownership/role check before mutation |
+| EC-MC-01 | Revoked visitor instruction link | 404/410; no data leak |
+| EC-MC-02 | Operational info exposed | Owner-only; separate from visitor content |
+| EC-EV-01 | Register for full/past event | Server-side capacity and date validation |
+| EC-GR-01 | RIMA/supplier unavailable | Safe 503; no partial orphan orders |
+| EC-GR-02 | Pickup time in the past | 400 validation |
+| EC-TS-01 | Overlapping tool borrow requests | Lock or constraint; clear 409 |
+| EC-DATE-01 | Timezone-naive dates | UTC date-only storage; server authoritative |
 
 Full list: [ai-dlc/guidelines/edge-cases.md](../ai-dlc/guidelines/edge-cases.md)
 
@@ -169,7 +169,7 @@ Before presenting any code as complete, verify:
 
 - [ ] Every acceptance criterion is traceable to the code
 - [ ] No hallucinated API methods, library names, or type signatures
-- [ ] EC-001 through EC-010 checked — relevant ones are handled or explicitly noted as out of scope
+- [ ] Relevant EC-* cases from edge-cases.md checked — handled or explicitly noted out of scope
 - [ ] No secrets, credentials, or hardcoded environment values
 - [ ] Auth is checked on every new endpoint
 - [ ] RLS policies are mentioned if new Supabase tables or access patterns are introduced

@@ -12,9 +12,9 @@ Every AC must follow this structure:
 - **Then** — the observable, verifiable outcome
 
 ```
-Given a Guest is authenticated and cabin #42 is available for 2025-07-01 to 2025-07-05,
-when the Guest submits a booking request for those dates,
-then a Booking with status Pending is created and the Guest receives a confirmation reference.
+Given a Resident is authenticated in Community "Norefjell" and a published event exists for next Saturday,
+when the Resident registers attendance for that event,
+then the Resident appears on the event attendee list and receives a confirmation reference.
 ```
 
 ---
@@ -22,27 +22,27 @@ then a Booking with status Pending is created and the Guest receives a confirmat
 ## Rules for Writing Good ACs
 
 ### One behaviour per criterion
-Bad: "The user can search, filter, and book a cabin."
-Good: Three separate ACs — one for search, one for filter, one for booking.
+Bad: "The user can browse, filter, and register for events."
+Good: Three separate ACs — one for browse, one for filter, one for registration.
 
 ### Observable outcomes only
-Bad: "The system calls the payment service."
-Good: "Then the booking status changes to Confirmed and the guest receives a confirmation email."
+Bad: "The system calls the RIMA API."
+Good: "Then the catalog shows products returned from the supplier integration."
 
 ### No implementation details
-Bad: "Then the `bookings` table is updated in PostgreSQL."
-Good: "Then the booking is retrievable via GET /bookings/{id} with status Confirmed."
+Bad: "Then the `events` table is updated in PostgreSQL."
+Good: "Then the event is retrievable via GET /events/{id} with status Published."
 
 ### State the actor explicitly
-Bad: "When a booking is cancelled..."
-Good: "Given a Guest with a Confirmed booking, when the Guest cancels before 48 hours prior to check-in..."
+Bad: "When an event is published..."
+Good: "Given an Administrator in Community X with a draft event, when the Administrator publishes the event..."
 
 ### Cover the unhappy path
 Every feature needs at least one AC for a failure scenario:
 ```
-Given cabin #42 is already booked for 2025-07-01 to 2025-07-05,
-when a second Guest submits a booking request for overlapping dates,
-then a 409 Conflict response is returned with a message indicating unavailability.
+Given a Tool Listing is already OnLoan for 2026-07-01 to 2026-07-05,
+when a second Cabin Owner submits a borrow request for overlapping dates,
+then a 409 Conflict response is returned indicating the tool is not available.
 ```
 
 ---
@@ -53,23 +53,24 @@ then a 409 Conflict response is returned with a message indicating unavailabilit
 - AC for empty results (zero matches)
 - AC for pagination boundaries (first page, last page, beyond last page)
 - AC for invalid filter values
+- AC for community scope (no data from other resorts)
 
 ### Create / Submit
 - AC for successful creation (happy path)
 - AC for validation failure (missing required field)
 - AC for conflict / duplicate
-- AC for unauthorized access
+- AC for unauthorized access (wrong role or community)
 
 ### Update / Edit
 - AC for successful update
-- AC for updating a field that cannot change (e.g., booking price after confirmation)
+- AC for updating a field that cannot change (e.g. community_id on a resource)
 - AC for concurrent edit conflict
 - AC for updating a record you do not own
 
 ### Delete / Cancel
 - AC for successful cancellation
-- AC for cancellation outside the allowed window
-- AC for cancelling a record in a terminal state (e.g., Completed booking)
+- AC for cancelling a record in a terminal state (e.g. completed loan)
+- AC for role that cannot perform the action
 
 ---
 
@@ -80,5 +81,5 @@ then a 409 Conflict response is returned with a message indicating unavailabilit
 | "The system should handle errors gracefully" | Not testable — what error, what outcome? |
 | "Performance should be acceptable" | No threshold, not verifiable |
 | "The UI should look good" | Subjective, not behavioural |
-| "Admins can do everything a Guest can" | Too broad — enumerate specific behaviours |
-| "It should work like the old system" | The old system may have bugs — specify the desired behaviour |
+| "Admins can do everything a Resident can" | Too broad — enumerate specific behaviours |
+| "It should work like the old system" | Specify the desired behaviour |

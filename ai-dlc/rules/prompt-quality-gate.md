@@ -46,21 +46,21 @@ Then provide the output.
 
 ## Example: Incomplete Request
 
-> "Add a search endpoint for cabins."
+> "Add an endpoint for events."
 
 Missing: Constraints, Acceptance Criteria, Output Format.
 Most critical gap: Acceptance Criteria.
 
 Correct response:
-> "Before I generate this — what's the testable condition for a correct search result? For example: given a date range and guest count, which cabins should be returned and which should be excluded?"
+> "Before I generate this — what's the testable condition for a correct result? For example: given a Resident in Community X, which events should be returned (published only? date range?) and which must be excluded (drafts, other communities)?"
 
 ---
 
 ## Example: Complete Request
 
 > "We're building CabinConnect (.NET 8 API, Supabase). Do not modify the auth layer.
-> The endpoint must return only cabins with no overlapping Confirmed bookings for the given date range.
-> An invalid date range (check-out ≤ check-in) must return 400.
+> Given a Resident in Community X, GET /events must return only published events for that community, ordered by start date.
+> Draft events and events from other communities must not appear. Invalid category filter → 400.
 > Generate the controller action, service method, and xUnit test stubs."
 
 All four components present — generate immediately, confirm at the top of the response.

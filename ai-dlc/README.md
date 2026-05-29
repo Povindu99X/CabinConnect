@@ -52,7 +52,7 @@ AI code generation is fast but produces five classes of failure: logic errors th
 - The [Prompt Quality Gate](rules/prompt-quality-gate.md) requires four components before any code generation: Context, Constraints, Acceptance Criteria, and Output Format. A missing component blocks generation — Claude asks for it first.
 - [Mob Elaboration](skills/mob-elab-prompts.md) produces ACs in Given/When/Then format through a turn-by-turn conversation. One unit at a time, with human sign-off at every step — the team's domain knowledge shapes the ACs, not the AI's inference.
 - The [Unit template](ops/build/units/_template.md) records explicit In Scope / Out of Scope boundaries and Pre-generation Checks — for wrapper or layout units, patterns to grep across existing files before generating, to surface duplication before code is written.
-- [Known edge cases](guidelines/edge-cases.md) (EC-001–EC-010) are checked per unit during elaboration, not discovered in production.
+- [Known edge cases](guidelines/edge-cases.md) (EC-COM, EC-AUTH, module-specific) are checked per unit during elaboration, not discovered in production.
 
 The result: by the time an engineer types "execute unit X," the AI has been given a precise, constrained, testable brief — which is the single biggest driver of output quality.
 
